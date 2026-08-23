@@ -199,6 +199,7 @@ func TestExecuteGitCommand(t *testing.T) {
 }
 
 func TestRepository_GetRepositoryName(t *testing.T) {
+	rootPath := filepath.VolumeName(filepath.Clean(os.TempDir())) + string(os.PathSeparator)
 	tests := []struct {
 		name     string
 		path     string
@@ -221,8 +222,8 @@ func TestRepository_GetRepositoryName(t *testing.T) {
 		},
 		{
 			name:     "root directory",
-			path:     "/",
-			expected: "/",
+			path:     rootPath,
+			expected: filepath.Base(rootPath),
 		},
 		{
 			name:     "current directory",

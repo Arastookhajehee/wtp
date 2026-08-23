@@ -2,6 +2,7 @@
 package framework
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -32,6 +33,12 @@ func AssertErrorContains(t *testing.T, err error, expected string) {
 // AssertOutputContains checks that output includes the expected substring.
 func AssertOutputContains(t *testing.T, output, expected string) {
 	t.Helper()
+	if strings.Contains(output, expected) {
+		return
+	}
+	if strings.Contains(filepath.ToSlash(output), filepath.ToSlash(expected)) {
+		return
+	}
 	assert.Contains(t, output, expected, "Expected output containing '%s', got: %s", expected, output)
 }
 
@@ -124,8 +131,9 @@ func AssertWorktreeExists(t *testing.T, repo *TestRepo, path string) {
 	t.Helper()
 	worktrees := repo.ListWorktrees()
 	found := false
+	expectedPath := filepath.ToSlash(path)
 	for _, wt := range worktrees {
-		if strings.Contains(wt, path) {
+		if strings.Contains(filepath.ToSlash(wt), expectedPath) {
 			found = true
 			break
 		}
@@ -139,8 +147,9 @@ func AssertWorktreeExists(t *testing.T, repo *TestRepo, path string) {
 func AssertWorktreeNotExists(t *testing.T, repo *TestRepo, path string) {
 	t.Helper()
 	worktrees := repo.ListWorktrees()
+	expectedPath := filepath.ToSlash(path)
 	for _, wt := range worktrees {
-		if strings.Contains(wt, path) {
+		if strings.Contains(filepath.ToSlash(wt), expectedPath) {
 			t.Errorf("Expected worktree at path '%s' not to exist, but it does", path)
 		}
 	}

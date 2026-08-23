@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,15 +17,17 @@ import (
 // This is the most important test - the core value proposition
 func TestCdCommand_AlwaysOutputsAbsolutePath(t *testing.T) {
 	// Setup a realistic worktree scenario
-	worktreeList := `worktree /Users/dev/project/main
+	mainPath := filepath.Join(t.TempDir(), "main")
+	featurePath := filepath.Join(filepath.Dir(mainPath), "worktrees", "feature", "auth")
+	worktreeList := fmt.Sprintf(`worktree %s
 HEAD abc123
 branch refs/heads/main
 
-worktree /Users/dev/project/worktrees/feature/auth
+worktree %s
 HEAD def456
 branch refs/heads/feature/auth
 
-`
+`, mainPath, featurePath)
 
 	tests := []struct {
 		name          string
@@ -35,19 +38,19 @@ branch refs/heads/feature/auth
 		{
 			name:          "main worktree by @ symbol",
 			worktreeName:  "@",
-			expectedPath:  "/Users/dev/project/main",
+			expectedPath:  mainPath,
 			shouldSucceed: true,
 		},
 		{
 			name:          "feature worktree by branch name",
 			worktreeName:  "feature/auth",
-			expectedPath:  "/Users/dev/project/worktrees/feature/auth",
+			expectedPath:  featurePath,
 			shouldSucceed: true,
 		},
 		{
 			name:          "feature worktree by directory name",
 			worktreeName:  "auth",
-			expectedPath:  "/Users/dev/project/worktrees/feature/auth",
+			expectedPath:  featurePath,
 			shouldSucceed: true, // Directory-based resolution works as expected
 		},
 		{

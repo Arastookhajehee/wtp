@@ -128,7 +128,7 @@ func getWorktreeNameFromPathCd(worktreePath string, cfg *config.Config, mainRepo
 		return filepath.Base(worktreePath)
 	}
 
-	return relPath
+	return canonicalWorktreeName(relPath)
 }
 
 // getWorktreesForCd gets worktrees for cd command with current position markers and writes them to writer (testable)
@@ -224,7 +224,7 @@ func completeWorktreesForCd(_ context.Context, cmd *cli.Command) {
 		return
 	}
 
-	currentNormalized := strings.TrimSuffix(current, "*")
+	currentNormalized := canonicalWorktreeName(current)
 
 	if currentNormalized == "" && len(previous) > 0 {
 		return
@@ -240,7 +240,7 @@ func completeWorktreesForCd(_ context.Context, cmd *cli.Command) {
 		if arg == "" || strings.HasPrefix(arg, "-") {
 			continue
 		}
-		key := strings.TrimSuffix(arg, "*")
+		key := canonicalWorktreeName(arg)
 		used[key] = struct{}{}
 	}
 
@@ -248,7 +248,7 @@ func completeWorktreesForCd(_ context.Context, cmd *cli.Command) {
 	scanner := bufio.NewScanner(&buf)
 	for scanner.Scan() {
 		raw := scanner.Text()
-		candidate := strings.TrimSuffix(raw, "*")
+		candidate := canonicalWorktreeName(raw)
 
 		if candidate == "" {
 			continue
