@@ -24,7 +24,7 @@ func TestNewShellInitCommand(t *testing.T) {
 	}
 
 	// Verify required shells are supported
-	supportedShells := []string{"bash", "zsh", "fish"}
+	supportedShells := []string{"bash", "zsh", "fish", "powershell", "pwsh"}
 	for _, shell := range supportedShells {
 		assert.Contains(t, subcommands, shell, "Shell-init command must support %s", shell)
 		assert.NotNil(t, subcommands[shell].Action)
@@ -57,6 +57,14 @@ func TestShellInitCommand_OutputsValidScripts(t *testing.T) {
 		{
 			name:  "fish generates without error",
 			shell: "fish",
+		},
+		{
+			name:  "powershell generates without error",
+			shell: "powershell",
+		},
+		{
+			name:  "pwsh generates without error",
+			shell: "pwsh",
 		},
 	}
 

@@ -26,7 +26,7 @@ func TestNewHookCommand_SupportedShells(t *testing.T) {
 	assert.Equal(t, "hook", cmd.Name)
 
 	// What matters: all required shells are supported
-	supportedShells := []string{"bash", "zsh", "fish"}
+	supportedShells := []string{"bash", "zsh", "fish", "powershell", "pwsh"}
 	for _, shell := range supportedShells {
 		subCmd := findSubcommand(cmd, shell)
 		assert.NotNil(t, subCmd, "Hook command must support %s", shell)
@@ -67,6 +67,28 @@ func TestHookCommand_GeneratesValidShellScripts(t *testing.T) {
 				"if test \"$argv[1]\" = \"cd\"",
 				"command wtp cd",
 				"cd \"$target_dir\"",
+			},
+		},
+		{
+			name:  "powershell generates valid hook",
+			shell: "powershell",
+			contains: []string{
+				"function wtp",
+				"Get-Command wtp.exe",
+				"$WtpArgs[0] -eq \"cd\"",
+				"Set-Location -LiteralPath $targetDir",
+				"& $wtpExe @WtpArgs",
+			},
+		},
+		{
+			name:  "pwsh generates valid hook",
+			shell: "pwsh",
+			contains: []string{
+				"function wtp",
+				"Get-Command wtp.exe",
+				"$WtpArgs[0] -eq \"cd\"",
+				"Set-Location -LiteralPath $targetDir",
+				"& $wtpExe @WtpArgs",
 			},
 		},
 	}
@@ -166,6 +188,20 @@ func TestHookScripts_HandleEdgeCases(t *testing.T) {
 				"echo \"Usage:",
 			},
 		},
+		{
+			name:  "powershell hook supports no-arg cd",
+			shell: "powershell",
+			requiredLogic: []string{
+				"if ($WtpArgs.Count -gt 1)",
+				"$targetDir = & $wtpExe cd $WtpArgs[1] 2>$null",
+				"$targetDir = & $wtpExe cd 2>$null",
+				"Set-Location -LiteralPath $targetDir",
+			},
+			notContains: []string{
+				"Usage: wtp cd <worktree>",
+				"Write-Output \"Usage:",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -179,6 +215,8 @@ func TestHookScripts_HandleEdgeCases(t *testing.T) {
 				require.NoError(t, printZshHook(&buf))
 			case "fish":
 				require.NoError(t, printFishHook(&buf))
+			case "powershell":
+				require.NoError(t, printPowerShellHook(&buf))
 			}
 
 			output := buf.String()
@@ -238,6 +276,18 @@ func TestHookScripts_AutoCdAfterAdd(t *testing.T) {
 				"return $wtp_status",
 			},
 		},
+		{
+			name:  "powershell auto cd after add preserves argv and uses quiet",
+			shell: "powershell",
+			contains: []string{
+				"$WtpArgs[0] -eq \"add\"",
+				"$arg -eq \"--help\" -or $arg -eq \"-h\"",
+				"$targetDir = & $wtpExe @WtpArgs --quiet",
+				"$wtpStatus = $LASTEXITCODE",
+				"Set-Location -LiteralPath $targetDir",
+				"return",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -251,6 +301,8 @@ func TestHookScripts_AutoCdAfterAdd(t *testing.T) {
 				require.NoError(t, printZshHook(&buf))
 			case "fish":
 				require.NoError(t, printFishHook(&buf))
+			case "powershell":
+				require.NoError(t, printPowerShellHook(&buf))
 			}
 
 			output := buf.String()
