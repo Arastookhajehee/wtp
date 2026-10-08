@@ -211,6 +211,7 @@ func removeBranchWithCommandExecutor(
 func findTargetWorktreeFromList(worktrees []git.Worktree, worktreeName string) (*git.Worktree, error) {
 	var targetWorktree *git.Worktree
 	var availableWorktrees []string
+	requestedWorktreeName := canonicalWorktreeName(worktreeName)
 
 	// Find main worktree path for consistent naming
 	mainWorktreePath := ""
@@ -244,19 +245,19 @@ func findTargetWorktreeFromList(worktrees []git.Worktree, worktreeName string) (
 		}
 
 		// Priority 1: Match by branch name (for prefixes like feature/awesome)
-		if wt.Branch == worktreeName {
+		if canonicalWorktreeName(wt.Branch) == requestedWorktreeName {
 			targetWorktree = &wt
 		}
 
 		// Priority 2: Match by directory name (legacy behavior)
 		wtName := filepath.Base(wt.Path)
-		if wtName == worktreeName {
+		if canonicalWorktreeName(wtName) == requestedWorktreeName {
 			targetWorktree = &wt
 		}
 
 		// Priority 3: Match by worktree name (relative to base_dir)
 		worktreeDisplayName := getWorktreeNameFromPath(wt.Path, cfg, mainWorktreePath, wt.IsMain)
-		if worktreeDisplayName == worktreeName {
+		if canonicalWorktreeName(worktreeDisplayName) == requestedWorktreeName {
 			targetWorktree = &wt
 		}
 
@@ -296,7 +297,7 @@ func getWorktreeNameFromPath(worktreePath string, cfg *config.Config, mainRepoPa
 		return filepath.Base(worktreePath)
 	}
 
-	return relPath
+	return canonicalWorktreeName(relPath)
 }
 
 // getWorktreesForRemove gets worktrees for remove command and writes them to writer (testable)
@@ -354,7 +355,7 @@ func completeWorktrees(_ context.Context, cmd *cli.Command) {
 		return
 	}
 
-	currentNormalized := strings.TrimSuffix(current, "*")
+	currentNormalized := canonicalWorktreeName(current)
 
 	var buf bytes.Buffer
 	if err := getWorktreesForRemove(&buf); err != nil {
@@ -366,7 +367,7 @@ func completeWorktrees(_ context.Context, cmd *cli.Command) {
 		if arg == "" || strings.HasPrefix(arg, "-") {
 			continue
 		}
-		key := strings.TrimSuffix(arg, "*")
+		key := canonicalWorktreeName(arg)
 		used[key] = struct{}{}
 	}
 

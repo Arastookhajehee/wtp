@@ -19,7 +19,9 @@ func NewHookCommand() *cli.Command {
 			"To enable the hook, add the following to your shell config:\n" +
 			"  Bash (~/.bashrc):         eval \"$(wtp hook bash)\"\n" +
 			"  Zsh (~/.zshrc):           eval \"$(wtp hook zsh)\"\n" +
-			"  Fish (~/.config/fish/config.fish): wtp hook fish | source",
+			"  Fish (~/.config/fish/config.fish): wtp hook fish | source\n" +
+			"  PowerShell ($PROFILE):    wtp hook powershell | Out-String | Invoke-Expression\n" +
+			"  PowerShell 7 ($PROFILE):  wtp hook pwsh | Out-String | Invoke-Expression",
 		Commands: []*cli.Command{
 			{
 				Name:        "bash",
@@ -38,6 +40,18 @@ func NewHookCommand() *cli.Command {
 				Usage:       "Generate fish hook script",
 				Description: "Generate fish hook script for cd functionality",
 				Action:      hookFish,
+			},
+			{
+				Name:        "powershell",
+				Usage:       "Generate Windows PowerShell hook script",
+				Description: "Generate Windows PowerShell hook script for cd functionality",
+				Action:      hookPowerShell,
+			},
+			{
+				Name:        "pwsh",
+				Usage:       "Generate PowerShell 7 hook script",
+				Description: "Generate PowerShell 7 hook script for cd functionality",
+				Action:      hookPowerShell,
 			},
 		},
 	}
@@ -65,6 +79,14 @@ func hookFish(_ context.Context, cmd *cli.Command) error {
 		w = os.Stdout
 	}
 	return printFishHook(w)
+}
+
+func hookPowerShell(_ context.Context, cmd *cli.Command) error {
+	w := cmd.Root().Writer
+	if w == nil {
+		w = os.Stdout
+	}
+	return printPowerShellHook(w)
 }
 
 func printBashHook(w io.Writer) error {
@@ -222,6 +244,68 @@ function wtp
         command wtp $argv
     end
 end`)
+
+	return err
+}
+
+func printPowerShellHook(w io.Writer) error {
+	_, err := fmt.Fprintln(w, `# wtp cd command hook for PowerShell
+function wtp {
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$WtpArgs
+    )
+
+    $wtpCommand = Get-Command wtp.exe -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -eq $wtpCommand) {
+        $wtpCommand = Get-Command wtp -CommandType Application -ErrorAction SilentlyContinue
+    }
+    if ($null -eq $wtpCommand) {
+        Write-Error "wtp executable not found in PATH"
+        return
+    }
+    $wtpExe = $wtpCommand.Source
+
+    foreach ($arg in $WtpArgs) {
+        if ($arg -eq "--generate-shell-completion") {
+            & $wtpExe @WtpArgs
+            return
+        }
+    }
+
+    if ($WtpArgs.Count -gt 0 -and $WtpArgs[0] -eq "cd") {
+        if ($WtpArgs.Count -gt 1) {
+            $targetDir = & $wtpExe cd $WtpArgs[1] 2>$null
+        } else {
+            $targetDir = & $wtpExe cd 2>$null
+        }
+
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($targetDir)) {
+            Set-Location -LiteralPath $targetDir
+        } else {
+            & $wtpExe @WtpArgs
+        }
+        return
+    }
+
+    if ($WtpArgs.Count -gt 0 -and $WtpArgs[0] -eq "add") {
+        foreach ($arg in $WtpArgs) {
+            if ($arg -eq "--help" -or $arg -eq "-h") {
+                & $wtpExe @WtpArgs
+                return
+            }
+        }
+
+        $targetDir = & $wtpExe @WtpArgs --quiet
+        $wtpStatus = $LASTEXITCODE
+        if ($wtpStatus -eq 0 -and -not [string]::IsNullOrWhiteSpace($targetDir)) {
+            Set-Location -LiteralPath $targetDir
+        }
+        return
+    }
+
+    & $wtpExe @WtpArgs
+}`)
 
 	return err
 }

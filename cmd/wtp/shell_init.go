@@ -11,9 +11,11 @@ import (
 )
 
 var allowedShells = map[string]struct{}{
-	"bash": {},
-	"zsh":  {},
-	"fish": {},
+	"bash":       {},
+	"zsh":        {},
+	"fish":       {},
+	"powershell": {},
+	"pwsh":       {},
 }
 
 var runCompletionCommand = func(shell string) ([]byte, error) {
@@ -28,8 +30,15 @@ var runCompletionCommand = func(shell string) ([]byte, error) {
 	}
 
 	// #nosec G204 -- exe comes from the running binary and shell is validated above
-	cmd := exec.Command(exe, "completion", shell)
+	cmd := exec.Command(exe, "completion", completionShellName(shell))
 	return cmd.Output()
+}
+
+func completionShellName(shell string) string {
+	if shell == "powershell" {
+		return "pwsh"
+	}
+	return shell
 }
 
 // NewShellInitCommand creates the shell-init command definition
@@ -43,7 +52,9 @@ func NewShellInitCommand() *cli.Command {
 			"To enable full shell integration, add the following to your shell config:\n" +
 			"  Bash (~/.bashrc):         eval \"$(wtp shell-init bash)\"\n" +
 			"  Zsh (~/.zshrc):           eval \"$(wtp shell-init zsh)\"\n" +
-			"  Fish (~/.config/fish/config.fish): wtp shell-init fish | source",
+			"  Fish (~/.config/fish/config.fish): wtp shell-init fish | source\n" +
+			"  PowerShell ($PROFILE):    wtp shell-init powershell | Out-String | Invoke-Expression\n" +
+			"  PowerShell 7 ($PROFILE):  wtp shell-init pwsh | Out-String | Invoke-Expression",
 		Commands: []*cli.Command{
 			{
 				Name:        "bash",
@@ -62,6 +73,18 @@ func NewShellInitCommand() *cli.Command {
 				Usage:       "Generate fish initialization script",
 				Description: "Generate fish initialization script with completion and navigation hooks",
 				Action:      shellInitFish,
+			},
+			{
+				Name:        "powershell",
+				Usage:       "Generate Windows PowerShell initialization script",
+				Description: "Generate Windows PowerShell initialization script with completion and navigation hooks",
+				Action:      shellInitPowerShell,
+			},
+			{
+				Name:        "pwsh",
+				Usage:       "Generate PowerShell 7 initialization script",
+				Description: "Generate PowerShell 7 initialization script with completion and navigation hooks",
+				Action:      shellInitPwsh,
 			},
 		},
 	}
@@ -122,6 +145,33 @@ func shellInitFish(_ context.Context, cmd *cli.Command) error {
 	}
 
 	return printFishHook(w)
+}
+
+func shellInitPowerShell(_ context.Context, cmd *cli.Command) error {
+	return shellInitPowerShellCommon(cmd, "powershell")
+}
+
+func shellInitPwsh(_ context.Context, cmd *cli.Command) error {
+	return shellInitPowerShellCommon(cmd, "pwsh")
+}
+
+func shellInitPowerShellCommon(cmd *cli.Command, shell string) error {
+	w := cmd.Root().Writer
+	if w == nil {
+		w = os.Stdout
+	}
+
+	// Output completion first
+	if err := outputCompletion(w, shell); err != nil {
+		return err
+	}
+
+	// Then output hook
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+
+	return printPowerShellHook(w)
 }
 
 // outputCompletion executes wtp completion command and writes output to w

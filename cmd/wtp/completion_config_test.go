@@ -194,7 +194,7 @@ func generateCompletionScript(t *testing.T, shell string) string {
 		data = append(data, '\n')
 	}
 
-	return string(data)
+	return normalizeScriptLineEndings(string(data))
 }
 
 func readCompletionTestdata(t *testing.T, name string) string {
@@ -232,5 +232,10 @@ func writeCompletionTestdata(t *testing.T, name, content string) {
 }
 
 func canonicalizeScript(script string) string {
+	script = normalizeScriptLineEndings(script)
 	return strings.TrimRight(script, "\n") + "\n"
+}
+
+func normalizeScriptLineEndings(script string) string {
+	return strings.ReplaceAll(script, "\r\n", "\n")
 }

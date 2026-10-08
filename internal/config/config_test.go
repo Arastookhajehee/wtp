@@ -275,6 +275,7 @@ func TestConfigValidate(t *testing.T) {
 }
 
 func TestHookValidate(t *testing.T) {
+	absSource := filepath.Join(t.TempDir(), "source.txt")
 	tests := []struct {
 		name        string
 		hook        Hook
@@ -326,7 +327,7 @@ func TestHookValidate(t *testing.T) {
 			name: "copy hook missing to with absolute from",
 			hook: Hook{
 				Type: HookTypeCopy,
-				From: filepath.Join(string(os.PathSeparator), "tmp", "source.txt"),
+				From: absSource,
 			},
 			expectError: true,
 		},
@@ -468,7 +469,7 @@ func TestConfigValidate_CopyAbsoluteFromRequiresTo(t *testing.T) {
 			PostCreate: []Hook{
 				{
 					Type: HookTypeCopy,
-					From: filepath.Join(string(os.PathSeparator), "tmp", "source.txt"),
+					From: filepath.Join(t.TempDir(), "source.txt"),
 				},
 			},
 		},
@@ -482,6 +483,8 @@ func TestConfigValidate_CopyAbsoluteFromRequiresTo(t *testing.T) {
 }
 
 func TestResolveWorktreePath(t *testing.T) {
+	repoRoot := filepath.Join(t.TempDir(), "home", "user", "project")
+	absBaseDir := filepath.Join(t.TempDir(), "worktrees")
 	tests := []struct {
 		name         string
 		config       *Config
@@ -496,20 +499,20 @@ func TestResolveWorktreePath(t *testing.T) {
 					BaseDir: "../worktrees",
 				},
 			},
-			repoRoot:     "/home/user/project",
+			repoRoot:     repoRoot,
 			worktreeName: "feature/auth",
-			expected:     "/home/user/worktrees/feature/auth",
+			expected:     filepath.Join(filepath.Dir(repoRoot), "worktrees", "feature", "auth"),
 		},
 		{
 			name: "absolute base_dir",
 			config: &Config{
 				Defaults: Defaults{
-					BaseDir: "/tmp/worktrees",
+					BaseDir: absBaseDir,
 				},
 			},
-			repoRoot:     "/home/user/project",
+			repoRoot:     repoRoot,
 			worktreeName: "feature/auth",
-			expected:     "/tmp/worktrees/feature/auth",
+			expected:     filepath.Join(absBaseDir, "feature", "auth"),
 		},
 		{
 			name: "simple worktree name",
@@ -518,9 +521,9 @@ func TestResolveWorktreePath(t *testing.T) {
 					BaseDir: "../worktrees",
 				},
 			},
-			repoRoot:     "/home/user/project",
+			repoRoot:     repoRoot,
 			worktreeName: "main",
-			expected:     "/home/user/worktrees/main",
+			expected:     filepath.Join(filepath.Dir(repoRoot), "worktrees", "main"),
 		},
 	}
 

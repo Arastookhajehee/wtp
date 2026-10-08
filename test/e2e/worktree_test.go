@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -271,6 +272,10 @@ defaults:
 		env.WriteFile(repo.Path()+"/template.txt", "template content")
 
 		// Create config with hooks
+		touchCommand := "touch hook-executed.txt"
+		if runtime.GOOS == "windows" {
+			touchCommand = "type nul > hook-executed.txt"
+		}
 		configContent := `version: "1.0"
 defaults:
   base_dir: ../worktrees
@@ -280,7 +285,7 @@ hooks:
       from: template.txt
       to: copied.txt
     - type: command
-      command: touch hook-executed.txt`
+      command: ` + touchCommand
 		env.WriteFile(repo.Path()+"/.wtp.yml", configContent)
 
 		// Create worktree with hooks

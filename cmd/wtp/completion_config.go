@@ -175,6 +175,16 @@ _wtp_sanitize_completion_list() {
 		"    COMPREPLY=($(compgen -W \"${opts}\" -- ${cur}))"
 
 	script = strings.Replace(script, target, replacement, 1)
+	if !strings.Contains(script, "WTP_SHELL_COMPLETION=1 eval") {
+		// Some checkouts feed CRLF scripts into this patcher on Windows. Patch the
+		// two lines independently so completion behavior does not depend on EOLs.
+		script = strings.Replace(script,
+			`opts=$(eval "${requestComp}" 2>/dev/null)`,
+			`opts=$(WTP_SHELL_COMPLETION=1 eval "${requestComp}" 2>/dev/null)`, 1)
+		script = strings.Replace(script,
+			`COMPREPLY=($(compgen -W "${opts}" -- ${cur}))`,
+			"opts=$(_wtp_sanitize_completion_list <<<\"${opts}\")\n    COMPREPLY=($(compgen -W \"${opts}\" -- ${cur}))", 1)
+	}
 	return script
 }
 

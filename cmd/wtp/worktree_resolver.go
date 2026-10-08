@@ -17,8 +17,7 @@ func findMainWorktreePath(worktrees []git.Worktree) string {
 }
 
 func resolveWorktreePathByName(worktreeName string, worktrees []git.Worktree, mainWorktreePath string) string {
-	// Remove asterisk marker from completion (e.g., "feature*" -> "feature", "@*" -> "@")
-	worktreeName = strings.TrimSuffix(worktreeName, "*")
+	worktreeName = canonicalWorktreeName(worktreeName)
 
 	// Load config for unified naming
 	cfg, err := config.LoadConfig(mainWorktreePath)

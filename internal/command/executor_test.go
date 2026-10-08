@@ -1,6 +1,7 @@
 package command
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -258,11 +259,12 @@ func TestRealExecutor(t *testing.T) {
 	t.Run("should execute simple command successfully", func(t *testing.T) {
 		// Given: a real executor
 		executor := NewRealExecutor()
+		name, args := testPrintCommand("hello")
 
-		// When: executing a simple echo command
+		// When: executing a simple print command
 		cmd := Command{
-			Name: "echo",
-			Args: []string{"hello"},
+			Name: name,
+			Args: args,
 		}
 		result, err := executor.Execute([]Command{cmd})
 
@@ -307,9 +309,10 @@ func TestRealShellExecutor(t *testing.T) {
 	t.Run("should execute command and return output", func(t *testing.T) {
 		// Given: a real shell executor
 		shell := NewRealShellExecutor()
+		name, args := testPrintCommand("test output")
 
 		// When: executing a simple command
-		output, err := shell.Execute("echo", []string{"test output"}, "", false)
+		output, err := shell.Execute(name, args, "", false)
 
 		// Then: should return correct output
 		assert.NoError(t, err)
@@ -319,13 +322,20 @@ func TestRealShellExecutor(t *testing.T) {
 	t.Run("should handle command with working directory", func(t *testing.T) {
 		// Given: a real shell executor
 		shell := NewRealShellExecutor()
+		workDir := t.TempDir()
+		commandName := "pwd"
+		commandArgs := []string{}
+		if runtime.GOOS == "windows" {
+			commandName = "cmd"
+			commandArgs = []string{"/c", "cd"}
+		}
 
-		// When: executing pwd command in /tmp directory
-		output, err := shell.Execute("pwd", []string{}, "/tmp", false)
+		// When: executing a command in a temporary working directory
+		output, err := shell.Execute(commandName, commandArgs, workDir, false)
 
-		// Then: should return /tmp as output
+		// Then: should return the configured working directory
 		assert.NoError(t, err)
-		assert.Contains(t, output, "tmp")
+		assert.Equal(t, workDir, output)
 	})
 
 	t.Run("should handle command failure", func(t *testing.T) {
@@ -343,14 +353,22 @@ func TestRealShellExecutor(t *testing.T) {
 	t.Run("should trim whitespace from output", func(t *testing.T) {
 		// Given: a real shell executor
 		shell := NewRealShellExecutor()
+		name, args := testPrintCommand("test")
 
 		// When: executing command that produces output with trailing newline
-		output, err := shell.Execute("printf", []string{"test\n"}, "", false)
+		output, err := shell.Execute(name, args, "", false)
 
 		// Then: output should be trimmed (strings.TrimSpace removes leading/trailing whitespace)
 		assert.NoError(t, err)
 		assert.Equal(t, "test", output) // TrimSpace removes newlines and spaces
 	})
+}
+
+func testPrintCommand(text string) (string, []string) {
+	if runtime.GOOS == "windows" {
+		return "cmd", []string{"/c", "echo " + text}
+	}
+	return "printf", []string{text + "\n"}
 }
 
 // Mock implementation for testing

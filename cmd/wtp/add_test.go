@@ -260,7 +260,7 @@ func TestResolveWorktreePath(t *testing.T) {
 			branchName:     "feature/auth",
 			baseDir:        "/test/worktrees",
 			flags:          map[string]any{},
-			expectedPath:   "/test/worktrees/feature/auth",
+			expectedPath:   expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/auth"),
 			expectedBranch: "feature/auth",
 		},
 		{
@@ -268,7 +268,7 @@ func TestResolveWorktreePath(t *testing.T) {
 			branchName:     "team/backend/feature",
 			baseDir:        "/worktrees",
 			flags:          map[string]any{},
-			expectedPath:   "/worktrees/team/backend/feature",
+			expectedPath:   expectedTestWorktreePath("/test/repo", "/worktrees", "team/backend/feature"),
 			expectedBranch: "team/backend/feature",
 		},
 	}
@@ -307,7 +307,7 @@ func TestAddCommand_CommandConstruction(t *testing.T) {
 			args: []string{"feature/test"},
 			expectedCommands: []command.Command{{
 				Name: "git",
-				Args: []string{"worktree", "add", "-b", "feature/test", "/test/worktrees/feature/test", "feature/test"},
+				Args: []string{"worktree", "add", "-b", "feature/test", expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/test"), "feature/test"},
 			}},
 			expectError: false,
 		},
@@ -319,7 +319,7 @@ func TestAddCommand_CommandConstruction(t *testing.T) {
 			args: []string{"main"},
 			expectedCommands: []command.Command{{
 				Name: "git",
-				Args: []string{"worktree", "add", "-b", "new-feature", "/test/worktrees/new-feature", "main"},
+				Args: []string{"worktree", "add", "-b", "new-feature", expectedTestWorktreePath("/test/repo", "/test/worktrees", "new-feature"), "main"},
 			}},
 			expectError: false,
 		},
@@ -402,7 +402,7 @@ func TestAddCommand_QuietModeOutput(t *testing.T) {
 		err := addCommandWithCommandExecutorWithWriters(cmd, &stdout, &stderr, mockExec, cfg, "/test/repo")
 
 		require.NoError(t, err)
-		assert.Equal(t, "/test/worktrees/feature/quiet", strings.TrimSpace(stdout.String()))
+		assert.Equal(t, expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/quiet"), strings.TrimSpace(stdout.String()))
 		assert.Empty(t, stderr.String())
 	})
 
@@ -426,7 +426,7 @@ func TestAddCommand_QuietModeOutput(t *testing.T) {
 		err := addCommandWithCommandExecutorWithWriters(cmd, &stdout, &stderr, mockExec, cfg, "/test/repo")
 
 		require.NoError(t, err)
-		assert.Equal(t, "/test/worktrees/feature/hook-fail", strings.TrimSpace(stdout.String()))
+		assert.Equal(t, expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/hook-fail"), strings.TrimSpace(stdout.String()))
 		assert.Contains(t, stderr.String(), "Warning: Hook execution failed")
 	})
 
@@ -451,7 +451,7 @@ func TestAddCommand_QuietModeOutput(t *testing.T) {
 		err := addCommandWithCommandExecutorWithWriters(cmd, &stdout, &stderr, exec, cfg, "/test/repo")
 
 		require.NoError(t, err)
-		assert.Equal(t, "/test/worktrees/feature/exec", strings.TrimSpace(stdout.String()))
+		assert.Equal(t, expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/exec"), strings.TrimSpace(stdout.String()))
 		assert.Contains(t, stderr.String(), "Executing --exec command: echo hi")
 		assert.Contains(t, stderr.String(), "exec output")
 		assert.Contains(t, stderr.String(), "✓ --exec command completed")
@@ -553,17 +553,17 @@ func TestAddCommand_InternationalCharacters(t *testing.T) {
 		{
 			name:         "Japanese characters",
 			branchName:   "機能/ログイン",
-			expectedPath: "/test/worktrees/機能/ログイン",
+			expectedPath: expectedTestWorktreePath("/test/repo", "/test/worktrees", "機能/ログイン"),
 		},
 		{
 			name:         "Spanish accents",
 			branchName:   "función/añadir",
-			expectedPath: "/test/worktrees/función/añadir",
+			expectedPath: expectedTestWorktreePath("/test/repo", "/test/worktrees", "función/añadir"),
 		},
 		{
 			name:         "Emoji characters",
 			branchName:   "feature/🚀-rocket",
-			expectedPath: "/test/worktrees/feature/🚀-rocket",
+			expectedPath: expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/🚀-rocket"),
 		},
 	}
 
@@ -594,6 +594,13 @@ func createTestCLICommand(t *testing.T, flags map[string]any, args []string) *cl
 		&cli.StringFlag{Name: "exec"},
 		&cli.BoolFlag{Name: "quiet"},
 	}, flags, args)
+}
+
+func expectedTestWorktreePath(repoRoot, baseDir, worktreeName string) string {
+	// These expectations are real filesystem paths, so they should follow the
+	// current OS instead of hardcoding Unix separators on Windows.
+	cfg := &config.Config{Defaults: config.Defaults{BaseDir: baseDir}}
+	return cfg.ResolveWorktreePath(repoRoot, worktreeName)
 }
 
 // ===== Integration Tests =====
@@ -633,7 +640,7 @@ func TestAddCommand_SimplifiedInterface(t *testing.T) {
 		// Then: should create new branch and worktree
 		assert.NoError(t, err)
 		assert.Len(t, mockExec.executedCommands, 1)
-		assert.Equal(t, []string{"worktree", "add", "-b", "feature/new", "/test/worktrees/feature/new"},
+		assert.Equal(t, []string{"worktree", "add", "-b", "feature/new", expectedTestWorktreePath("/test/repo", "/test/worktrees", "feature/new")},
 			mockExec.executedCommands[0].Args)
 		assert.Contains(t, buf.String(), "✅ Worktree created successfully!")
 	})
@@ -653,7 +660,7 @@ func TestAddCommand_SimplifiedInterface(t *testing.T) {
 		// Then: should create new branch from commit and worktree
 		assert.NoError(t, err)
 		assert.Len(t, mockExec.executedCommands, 1)
-		assert.Equal(t, []string{"worktree", "add", "-b", "hotfix/urgent", "/test/worktrees/hotfix/urgent", "main"},
+		assert.Equal(t, []string{"worktree", "add", "-b", "hotfix/urgent", expectedTestWorktreePath("/test/repo", "/test/worktrees", "hotfix/urgent"), "main"},
 			mockExec.executedCommands[0].Args)
 		assert.Contains(t, buf.String(), "✅ Worktree created successfully!")
 	})

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +46,7 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 func (e *TestEnvironment) buildWTP() {
 	e.t.Helper()
 
-	wtpBinary := filepath.Join(e.tmpDir, "wtp")
+	wtpBinary := filepath.Join(e.tmpDir, testBinaryName())
 	if runtime := os.Getenv("WTP_E2E_BINARY"); runtime != "" {
 		wtpBinary = runtime
 		if _, err := os.Stat(wtpBinary); err != nil {
@@ -72,6 +73,13 @@ func (e *TestEnvironment) buildWTP() {
 	}
 
 	e.wtpBinary = wtpBinary
+}
+
+func testBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "wtp.exe"
+	}
+	return "wtp"
 }
 
 func (e *TestEnvironment) findProjectRoot() string {
